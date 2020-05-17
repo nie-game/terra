@@ -359,7 +359,7 @@ if(WIN32)
 endif()
 
 install(
-  TARGETS TerraLibrary TerraLibraryShared TerraExecutable
+  TARGETS TerraLibrary
   EXPORT TerraExports
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
