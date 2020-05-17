@@ -188,7 +188,6 @@ add_dependencies(TerraLibrary LuaJIT)
 add_dependencies(TerraLibrary LLVMObjectFiles)
 
 set_target_properties(TerraLibrary PROPERTIES OUTPUT_NAME terra_s)
-set_target_properties(TerraLibraryShared PROPERTIES OUTPUT_NAME terra)
 
 if(WIN32)
 
