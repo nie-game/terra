@@ -142,12 +142,23 @@ int terra_lualoadfile(lua_State *L) {
 }
 
 int terra_lualoadstring(lua_State *L) {
-    const char *string = luaL_checkstring(L, -1);
-    if (terra_loadstring(L, string)) {
-        lua_pushnil(L);
-        lua_pushvalue(L, -2);
-        lua_remove(L, -3);
-        return 2;
+    size_t len;
+    const char *string = luaL_checklstring(L, 1, &len);
+    if(lua_isstring(L,2)){
+        const char *name = luaL_checkstring(L, 2);
+        if (terra_loadbuffer(L, string, len, name)) {
+            lua_pushnil(L);
+            lua_pushvalue(L, -2);
+            lua_remove(L, -3);
+            return 2;
+        }
+    } else {
+        if (terra_loadstring(L, string)) {
+            lua_pushnil(L);
+            lua_pushvalue(L, -2);
+            lua_remove(L, -3);
+            return 2;
+        }
     }
     return 1;
 }
