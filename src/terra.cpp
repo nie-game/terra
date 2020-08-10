@@ -143,22 +143,25 @@ int terra_lualoadfile(lua_State *L) {
 
 int terra_lualoadstring(lua_State *L) {
     size_t len;
-    const char *string = luaL_checklstring(L, 1, &len);
-    if(lua_isstring(L,2)){
-        const char *name = luaL_checkstring(L, 2);
-        if (terra_loadbuffer(L, string, len, name)) {
-            lua_pushnil(L);
-            lua_pushvalue(L, -2);
-            lua_remove(L, -3);
-            return 2;
-        }
-    } else {
-        if (terra_loadstring(L, string)) {
-            lua_pushnil(L);
-            lua_pushvalue(L, -2);
-            lua_remove(L, -3);
-            return 2;
-        }
+    const char *string = luaL_checklstring(L, -1, &len);
+    if (terra_loadstring(L, string)) {
+        lua_pushnil(L);
+        lua_pushvalue(L, -2);
+        lua_remove(L, -3);
+        return 2;
+    }
+    return 1;
+}
+
+int terra_lualoadbuffer(lua_State *L) {
+    size_t len;
+    const char *string = luaL_checklstring(L, -2, &len);
+    const char *name = luaL_checkstring(L, -1);
+    if (terra_loadbuffer(L, string, len, name)) {
+        lua_pushnil(L);
+        lua_pushvalue(L, -2);
+        lua_remove(L, -3);
+        return 2;
     }
     return 1;
 }
@@ -483,6 +486,8 @@ int terra_initwithoptions(lua_State *L, terra_Options *options) {
     lua_setfield(T->L, -2, "load");
     lua_pushcfunction(T->L, terra_lualoadstring);
     lua_setfield(T->L, -2, "loadstring");
+    lua_pushcfunction(T->L, terra_lualoadbuffer);
+    lua_setfield(T->L, -2, "loadbuffer");
     lua_pushcfunction(T->L, terra_lualoadfile);
     lua_setfield(T->L, -2, "loadfile");
 
