@@ -2,19 +2,6 @@
 ### Terra Generated Source Files
 ###
 
-if(TERRA_ENABLE_CUDA)
-  list(APPEND TERRA_CUDA_INCLUDE_DIRS
-    ${CUDA_INCLUDE_DIRS}
-    ${CUDA_TOOLKIT_ROOT_DIR}/nvvm/include
-  )
-  # FIXME: Find a portable way to do this.
-  foreach(TERRA_CUDA_INCLUDE_DIR ${TERRA_CUDA_INCLUDE_DIRS})
-    list(APPEND TERRA_CUDA_INCLUDE_DIR_FLAGS
-      "-I" "${TERRA_CUDA_INCLUDE_DIR}"
-    )
-  endforeach()
-endif()
-
 add_custom_command(
   OUTPUT "${PROJECT_BINARY_DIR}/internalizedfiles.h"
   DEPENDS
@@ -174,17 +161,6 @@ if(NOT ${LLVM_ENABLE_ASSERTIONS})
   )
 endif()
 
-if(TERRA_ENABLE_CUDA)
-  target_compile_definitions(TerraObjectFiles
-    PRIVATE
-      TERRA_ENABLE_CUDA
-  )
-  target_include_directories(TerraObjectFiles
-    PRIVATE
-      ${TERRA_CUDA_INCLUDE_DIRS}
-  )
-endif()
-
 target_compile_definitions(TerraObjectFiles
   PRIVATE
     ${TERRA_VERSION_DEFINITIONS}
@@ -200,12 +176,6 @@ add_library(TerraLibrary
     ${ALL_LLVM_OBJECTS}
     ${LUAJIT_OBJECTS}
 )
-add_library(TerraLibraryShared
-  SHARED
-    $<TARGET_OBJECTS:TerraObjectFiles>
-    ${ALL_LLVM_OBJECTS}
-    ${LUAJIT_OBJECTS}
-)
 
 set_source_files_properties(
   ${ALL_LLVM_OBJECTS}
@@ -217,33 +187,9 @@ set_source_files_properties(
 add_dependencies(TerraLibrary LuaJIT)
 add_dependencies(TerraLibrary LLVMObjectFiles)
 
-add_dependencies(TerraLibraryShared LuaJIT)
-add_dependencies(TerraLibraryShared LLVMObjectFiles)
-
-set_target_properties(TerraLibraryShared PROPERTIES PREFIX "")
-
 set_target_properties(TerraLibrary PROPERTIES OUTPUT_NAME terra_s)
-set_target_properties(TerraLibraryShared PROPERTIES OUTPUT_NAME terra)
-
-set_target_properties(TerraLibrary PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/lib")
-set_target_properties(TerraLibraryShared PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/lib")
-
-target_link_libraries(TerraLibraryShared
-  PRIVATE
-    ${LUAJIT_LIBRARIES}
-    ${ALL_LLVM_LIBRARIES}
-    ${LLVM_SYSTEM_LIBRARIES}
-)
-
-if(APPLE)
-  target_link_libraries(TerraLibraryShared PRIVATE -single_module)
-endif()
 
 if(WIN32)
-  target_link_libraries(TerraLibraryShared
-    PRIVATE
-      shlwapi.lib dbghelp.lib version.lib
-  )
 
   list(APPEND TERRA_EXPORTS
     /EXPORT:terra_init
@@ -253,10 +199,6 @@ if(WIN32)
     /EXPORT:terra_loadbuffer
     /EXPORT:terra_loadstring
     /EXPORT:terra_llvmshutdown
-  )
-  target_link_options(TerraLibraryShared
-    PRIVATE
-      ${TERRA_EXPORTS}
   )
 endif()
 
@@ -281,29 +223,6 @@ else()
   )
 endif()
 
-add_executable(TerraExecutable ${TERRA_EXE_SRC})
-
-set_target_properties(TerraExecutable PROPERTIES OUTPUT_NAME terra)
-set_target_properties(TerraExecutable PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
-
-target_include_directories(TerraExecutable
-  PRIVATE
-    ${PROJECT_BINARY_DIR}
-    ${PROJECT_BINARY_DIR}/include/terra
-)
-
-if(WIN32)
-  target_include_directories(TerraExecutable
-    PRIVATE
-      ${PROJECT_SOURCE_DIR}/msvc
-  )
-endif()
-
-target_compile_definitions(TerraExecutable
-  PRIVATE
-    ${TERRA_VERSION_DEFINITIONS}
-)
-
 if(APPLE)
   set_target_properties(TerraExecutable
     PROPERTIES
@@ -327,24 +246,7 @@ elseif(UNIX)
         "-Wl,-rpath,$ORIGIN/../lib"
     )
   endif()
-  target_link_libraries(TerraExecutable
-    PRIVATE
-      -Wl,-export-dynamic
-      -Wl,--whole-archive
-      TerraLibrary
-      -Wl,--no-whole-archive
-      ${LUAJIT_LIBRARIES}
-      ${ALL_LLVM_LIBRARIES}
-      ${LLVM_SYSTEM_LIBRARIES}
-  )
 else()
-  target_link_libraries(TerraExecutable
-    PRIVATE
-      TerraLibrary
-      ${LUAJIT_LIBRARIES}
-      ${ALL_LLVM_LIBRARIES}
-      ${LLVM_SYSTEM_LIBRARIES}
-  )
 endif()
 
 if(WIN32)
@@ -359,7 +261,7 @@ if(WIN32)
 endif()
 
 install(
-  TARGETS TerraLibrary TerraLibraryShared TerraExecutable
+  TARGETS TerraLibrary
   EXPORT TerraExports
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -370,30 +272,6 @@ install(
   FILES ${PROJECT_BINARY_DIR}/include/terra/terra.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/terra
 )
-
-file(GLOB TERRA_TESTS
-  RELATIVE ${PROJECT_SOURCE_DIR}/tests
-  ${PROJECT_SOURCE_DIR}/tests/*.t
-  ${PROJECT_SOURCE_DIR}/tests/fails/*.t
-)
-file(GLOB_RECURSE TERRA_TESTS_INSTALL
-  RELATIVE ${PROJECT_SOURCE_DIR}/tests
-  ${PROJECT_SOURCE_DIR}/tests/*
-)
-
-foreach(TERRA_TEST ${TERRA_TESTS})
-  add_test(NAME ${TERRA_TEST}
-    COMMAND $<TARGET_FILE:TerraExecutable> ${TERRA_TEST}
-    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/tests
-  )
-endforeach()
-foreach(TERRA_TEST ${TERRA_TESTS_INSTALL})
-  get_filename_component(TERRA_TEST_DIR ${TERRA_TEST} DIRECTORY)
-  install(
-    FILES ${PROJECT_SOURCE_DIR}/tests/${TERRA_TEST}
-    DESTINATION ${CMAKE_INSTALL_DATADIR}/terra/tests/${TERRA_TEST_DIR}
-  )
-endforeach()
 
 install(
   FILES ${PROJECT_SOURCE_DIR}/release/share/terra/LICENSE.txt
